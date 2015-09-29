@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Middleboxes</string>
+    <string-array name="testsCollection">
+        <item>HTTP Header Modified</item>
+        <item>HTTP 404 Modified</item>
+        <item>HTTP custom Host</item>
+        <item>NAT Present</item>
+        <item>USER Agent Matched</item>
+        <item>TCP RESET on 8081</item>
+        <item>IP Flipping</item>
+    </string-array>
+    <string name ="HTTP_Port">80</string>
+    <string name ="HTTP_Alt_Port">8080</string>
+    <string name="Random_Port">8081</string>
+    <string name="Server_IP">52.88.92.191</string>
+    <string name="action_settings">Settings</string>
+</resources>
