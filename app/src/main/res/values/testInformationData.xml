@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="testText">
+        <item>In this we send predetermined header fields in HTTP with mix of cases. We observe if there are any changes in HTTP metadata. For example, we check if casing has changed in the HTTP headers or any new fields are added or existing fields
+        </item>
+
+        <item><p>Middleboxes sometimes modify HTTP error pages, popularly HTTP 404. If the server returns HTTP error, they present users with some relevant search results. We can use this property to probe the presence of caching web proxy middleboxes.<br />
+We send a HTTP request to the server with the test type as  "http404" coded in the http headers metadata. server identifies the test type and replies with a HTTP 404 code and a predefined error message. If the error message received at App is different from the predefined error, there is a web caching middlebox present in the cellular network</p>
+        </item>
+
+        <item>
+        Some middleboxes interpret the host field in HTTP and attempt to contact the listed host rather than forward the request to the intended address.
+In this test we modify the host field in the HTTP GET request. We set the host field in headers as ‘www.google.com’ and send a request to server. If the request reaches destination server, it replies with a predetermined response. If the middlebox interprets the host field and the response is not the predetermined page, then there is a middlebox in the network
+        </item>
+
+        <item>
+        This test probes for the presence of NAT boxes in the cellular data network. This test is run as an asynchronous task in the android application. This test sends a HTTP GET request to the server. Type of the test is encoded in the HTTP header as “NatTest”.  HTTP GET carries local IP address of the Android device in the URL. Server compares the Local IP address of the android device to the public IP address it received the HTTP request.  Result of the comparison is sent back as a string in the  HTTP reply.
+        </item>
+
+        <item>
+        HTTP requests carry user agent information as a metadata in HTTP headers. This allows the Web servers to better serve the requests with styling information specific to a browser platform. If there is a caching Web proxy middlebox in the network, it terminates the HTTP request from the android device and make a fresh HTTP request to the server. Since the HTTP request is coming from a network device and not a browser, It will be an unfamiliar string or it is not present in the header.
+
+In this test, we send a HTTP request with a predefined user-agent string known to app and server. Test name ‘user-agent’  is added to the HTTP headers for server to identify the test running. When server receives a HTTP request, it matches the received user agent string to the known user string. Result is sent back as a string to the app.
+        </item>
+        <item>
+        If a HTTP request comes on a port, server is not listening to, a TCP RST error is returned to the client. If the the middlebox ACKs the HTTP request on a non-listening port, that means there is a web caching middlebox in the network. Middlebox could be acknowledging the TCP connection before making a connection to the original server.
+
+	We send a HTTP request to a random port( Implementation uses 8081, no service is listening on this port). If the TCP connection succeed and the call to the connect returns successfully, that means a web caching proxy could be present in the network. Otherwise if the connection does not succeed, it does not relate to absence of middlebox.
+        </item>
+        There could be more than one middlebox in the cellular network. Cellular operators can handle web traffic separately and other traffic separately or traffic is routed through multiple middleboxes for load balancing purposes. In this test we check to see if the public IP address seen by the server changes between multiple HTTP requests. If the public IP changes, it signify the presence of multiple middleboxes in the network.
+
+        App sends multiple HTTP requests to the server with the test name set to ‘NatTest’ as we need public IP as seen by the server. Android app checks if the Public IP is changing in each request. If it changes, this could signify presence of multiple Middleboxes, otherwise it is not guaranteed that there is only one middlebox in the network.
+        <item>
+            There could be more than one middlebox in the cellular network. Cellular operators can handle web traffic separately and other traffic separately or traffic is routed through multiple middleboxes for load balancing purposes. In this test we check to see if the public IP address seen by the server changes between multiple HTTP requests. If the public IP changes, it signify the presence of multiple middleboxes in the network.
+
+	App sends multiple HTTP requests to the server with the test name set to ‘NatTest’ as we need public IP as seen by the server. Android app checks if the Public IP is changing in each request. If it changes, this could signify presence of multiple
+
+        </item>
+    </string-array>
+</resources>

@@ -4,6 +4,7 @@ import android.app.ActionBar;
 import android.content.Context;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Layout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -11,19 +12,20 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import edu.stonybrook.utils.UrlBuilder;
 import rx.Observable;
-import rx.Scheduler;
+import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener{
@@ -32,11 +34,11 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
     private String mHttpPort =null;
     private String mHttpAltPort = null;
     private String mRandomPort = null;
-    private ListView mTestsView;
+    private ListView mTestsListView;
     private CustomAdapter listViewAdapter;
     Context mContext;
     String[] testsArray;
-
+    String[] testDescArray;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,18 +48,39 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         mHttpPort = getResources().getString(R.string.HTTP_Port);
         mHttpAltPort = getResources().getString(R.string.HTTP_Alt_Port);
         mRandomPort = getResources().getString(R.string.Random_Port);
-        mTestsView = (ListView)this.findViewById(R.id.testListView);
+        mTestsListView = (ListView)this.findViewById(R.id.testListView);
 
         testsArray = getResources().getStringArray(R.array.testsCollection);
+        testDescArray = getResources().getStringArray(R.array.testText);
         listViewAdapter = new CustomAdapter();
         int testsCount = testsArray.length;
         int i;
         for(i=0;i<testsCount;i++){
-            TableItem item = new TableItem(testsArray[i],"");
+            TableItem item = new TableItem(testsArray[i],testDescArray[i],"Run Tests");
             listViewAdapter.addItem(item);
         }
-        mTestsView.setAdapter(listViewAdapter);
-
+        mTestsListView.setAdapter(listViewAdapter);
+        mTestsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                View v = view.findViewById(R.id.testInfoTextView);
+                RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT,
+                                                                                        RelativeLayout.LayoutParams.WRAP_CONTENT);
+                //ExpandAnimation expandAni = new ExpandAnimation(v,500);
+                //v.startAnimation(expandAni);
+                //v.setVisibility(View.VISIBLE);
+                if( v.getVisibility() == View.VISIBLE) {
+                    params.height = 0;
+                    v.setLayoutParams(params);
+                    v.setVisibility(View.INVISIBLE);
+                }
+                else{
+                    params.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
+                    v.setLayoutParams(params);
+                    v.setVisibility(View.VISIBLE);
+                }
+            }
+        });
         Button testsRunButton = (Button)findViewById(R.id.runTests);
         testsRunButton.setOnClickListener(this);
     }
@@ -87,15 +110,22 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
 
     @Override
     public void onClick(View v) {
-        Observable<String> http404Obserable = new HTMLTests().performHTTP404(mServer,mHttpAltPort);
-        http404Obserable.subscribeOn(Schedulers.newThread())
+        HTMLTests htmlTester = new HTMLTests(v);
+        UrlBuilder urlBuilder_port8080 = new UrlBuilder(mServer,mHttpAltPort,v);
+        String url = urlBuilder_port8080.getServerUrl();
+        Observable<String> http404TestObserable = htmlTester.performHTTP404(url);
+        http404TestObserable.subscribeOn(Schedulers.newThread())
                         .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(new Action1<String>() {
-                            @Override
-                            public void call(String s) {
-                                Log.i("Praveen", "Result is" + s);
-                            }
-                        });
+                        .subscribe(new middleboxObserver("HTTP 404 Modified"));
+        Observable<String> httpCustomHostTestObservable = htmlTester.performHTTPCustomHost(url);
+        httpCustomHostTestObservable.subscribeOn(Schedulers.newThread())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new middleboxObserver("HTTP custom Host"));
+
+        Observable<String> httpUserAgentTestObservable = htmlTester.performHTTPCustomHost(url);
+        httpUserAgentTestObservable.subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new middleboxObserver("USER Agent Matched"));
     }
 
 
@@ -129,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
             Iterator iter = mData.iterator();
             while(iter.hasNext()){
                 TableItem item = (TableItem)iter.next();
-                if(item.testname == tname){
+                if(item.testname.equals(tname)){
                     item.testResult = tResult;
                 }
             }
@@ -145,18 +175,44 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
             }
             TextView textViewTestName = (TextView) view.findViewById(R.id.testName);
             TextView textViewTestResul = (TextView)view.findViewById(R.id.result);
+            TextView textViewTestInfo = (TextView) view.findViewById(R.id.testInfoTextView);
+
             textViewTestName.setText(item.testname);
             textViewTestResul.setText(item.testResult);
+            textViewTestInfo.setText(item.testDesc);
             return view;
         }
     }
 
     private class TableItem{
         public String testname=null;
+        public String testDesc = null;
         public String testResult=null;
-        public TableItem(String tName, String tResult){
+        public TableItem(String tName, String description, String tResult){
             testname = tName;
             testResult = tResult;
+            testDesc = description;
+        }
+    }
+    private class middleboxObserver implements Observer<String>{
+        String testName;
+        String result;
+        public middleboxObserver(String tname){
+            testName = tname;
+        }
+        @Override
+        public void onCompleted() {
+            listViewAdapter.updateResult(testName,result);
+        }
+
+        @Override
+        public void onError(Throwable e) {
+
+        }
+
+        @Override
+        public void onNext(String s) {
+            result = s;
         }
     }
 

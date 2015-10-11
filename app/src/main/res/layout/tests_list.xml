@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="50dp">
+
+
+
 
     <TableLayout
         android:layout_width="fill_parent"
@@ -48,4 +51,13 @@
                 android:paddingBottom="10dp" />
         </TableRow>
     </TableLayout>
-</LinearLayout>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:text="Test Information"
+        android:id="@+id/testInfoTextView"
+        android:visibility="invisible"
+        android:layout_below="@+id/testRow"
+        android:textColor="@color/blue14" />
+
+</RelativeLayout>

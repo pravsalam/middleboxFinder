@@ -1,17 +1,18 @@
 <resources>
     <string name="app_name">Middleboxes</string>
     <string-array name="testsCollection">
-        <item>HTTP Header Modified</item>
-        <item>HTTP 404 Modified</item>
-        <item>HTTP custom Host</item>
-        <item>NAT Present</item>
-        <item>USER Agent Matched</item>
-        <item>TCP RESET on 8081</item>
-        <item>IP Flipping</item>
+        <item name="HTTP_HEADER_MOD">HTTP Header Modified</item>
+        <item name="HTTP_404_MOD">HTTP 404 Modified</item>
+        <item name="HTTP_CUSTOM_HOST">HTTP custom Host</item>
+        <item name="NAT_PRESENT">NAT Present</item>
+        <item name= "USER_AGENT_MATCH">USER Agent Matched</item>
+        <item name="TCP_RESET_8081">TCP RESET on 8081</item>
+        <item name="IP_FLIP">IP Flipping</item>
     </string-array>
     <string name ="HTTP_Port">80</string>
     <string name ="HTTP_Alt_Port">8080</string>
     <string name="Random_Port">8081</string>
-    <string name="Server_IP">52.88.92.191</string>
+    <string name="Server_IP">52.89.55.46</string>
     <string name="action_settings">Settings</string>
+    <string name="HTTP_TEST_USER_AGENT">android_middlebox_browser</string>
 </resources>
