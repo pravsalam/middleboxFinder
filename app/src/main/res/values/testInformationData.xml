@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="testText">
-        <item>In this we send predetermined header fields in HTTP with mix of cases. We observe if there are any changes in HTTP metadata. For example, we check if casing has changed in the HTTP headers or any new fields are added or existing fields
-        </item>
+       <!-- <item>In this we send predetermined header fields in HTTP with mix of cases. We observe if there are any changes in HTTP metadata. For example, we check if casing has changed in the HTTP headers or any new fields are added or existing fields
+        </item>-->
 
         <item><p>Middleboxes sometimes modify HTTP error pages, popularly HTTP 404. If the server returns HTTP error, they present users with some relevant search results. We can use this property to probe the presence of caching web proxy middleboxes.<br />
 We send a HTTP request to the server with the test type as  "http404" coded in the http headers metadata. server identifies the test type and replies with a HTTP 404 code and a predefined error message. If the error message received at App is different from the predefined error, there is a web caching middlebox present in the cellular network</p>

@@ -1,10 +1,11 @@
 package edu.stonybrook.middleboxes;
 
-import android.app.ActionBar;
 import android.content.Context;
+import android.content.Intent;
+import android.location.Location;
+import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Layout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -20,8 +21,12 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
+import edu.stonybrook.utils.DeviceLocationInfo;
+import edu.stonybrook.utils.TestCountSynchronized;
+import edu.stonybrook.utils.UploadResultsToServer;
 import edu.stonybrook.utils.UrlBuilder;
 import rx.Observable;
 import rx.Observer;
@@ -34,11 +39,17 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
     private String mHttpPort =null;
     private String mHttpAltPort = null;
     private String mRandomPort = null;
+    private String mUploadPort = null;
     private ListView mTestsListView;
     private CustomAdapter listViewAdapter;
     Context mContext;
     String[] testsArray;
     String[] testDescArray;
+    TestCountSynchronized doneSignal;
+    int testCount;
+    HashMap<String, String> resultmap;
+    private Location mLocation = null;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,14 +59,17 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         mHttpPort = getResources().getString(R.string.HTTP_Port);
         mHttpAltPort = getResources().getString(R.string.HTTP_Alt_Port);
         mRandomPort = getResources().getString(R.string.Random_Port);
+        mUploadPort = getResources().getString(R.string.HTTP_RESULT_UPLOAD_PORT);
         mTestsListView = (ListView)this.findViewById(R.id.testListView);
 
         testsArray = getResources().getStringArray(R.array.testsCollection);
         testDescArray = getResources().getStringArray(R.array.testText);
         listViewAdapter = new CustomAdapter();
-        int testsCount = testsArray.length;
+        testCount = testsArray.length;
+        doneSignal = new TestCountSynchronized(testCount);
+        resultmap = new HashMap<String, String>(testCount);
         int i;
-        for(i=0;i<testsCount;i++){
+        for(i=0;i<testCount;i++){
             TableItem item = new TableItem(testsArray[i],testDescArray[i],"Run Tests");
             listViewAdapter.addItem(item);
         }
@@ -65,16 +79,16 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 View v = view.findViewById(R.id.testInfoTextView);
                 RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT,
-                                                                                        RelativeLayout.LayoutParams.WRAP_CONTENT);
+                        RelativeLayout.LayoutParams.WRAP_CONTENT);
+                params.addRule(RelativeLayout.BELOW, R.id.testRow);
                 //ExpandAnimation expandAni = new ExpandAnimation(v,500);
                 //v.startAnimation(expandAni);
                 //v.setVisibility(View.VISIBLE);
-                if( v.getVisibility() == View.VISIBLE) {
+                if (v.getVisibility() == View.VISIBLE) {
                     params.height = 0;
                     v.setLayoutParams(params);
                     v.setVisibility(View.INVISIBLE);
-                }
-                else{
+                } else {
                     params.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
                     v.setLayoutParams(params);
                     v.setVisibility(View.VISIBLE);
@@ -83,6 +97,23 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         });
         Button testsRunButton = (Button)findViewById(R.id.runTests);
         testsRunButton.setOnClickListener(this);
+        //test results viewing
+        Button resultsButton = (Button)findViewById(R.id.results);
+        resultsButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://"+mServer));
+                startActivity(intent);
+            }
+        });
+        //Location information
+        DeviceLocationInfo deviceLocationInfo = new DeviceLocationInfo(mContext);
+        mLocation = deviceLocationInfo.getLocation();
+        if(mLocation != null){
+            Log.i("Praveen","Got location info");
+        }
+
+
     }
 
 
@@ -111,21 +142,40 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
     @Override
     public void onClick(View v) {
         HTMLTests htmlTester = new HTMLTests(v);
-        UrlBuilder urlBuilder_port8080 = new UrlBuilder(mServer,mHttpAltPort,v);
+        NATTests natTester = new NATTests(v);
+        TCPTests tcpTester = new TCPTests(v);
+        UrlBuilder urlBuilder_port8080 = new UrlBuilder(mServer,mHttpAltPort,v.getContext());
         String url = urlBuilder_port8080.getServerUrl();
         Observable<String> http404TestObserable = htmlTester.performHTTP404(url);
         http404TestObserable.subscribeOn(Schedulers.newThread())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(new middleboxObserver("HTTP 404 Modified"));
+
         Observable<String> httpCustomHostTestObservable = htmlTester.performHTTPCustomHost(url);
         httpCustomHostTestObservable.subscribeOn(Schedulers.newThread())
                                 .observeOn(AndroidSchedulers.mainThread())
                                 .subscribe(new middleboxObserver("HTTP custom Host"));
 
-        Observable<String> httpUserAgentTestObservable = htmlTester.performHTTPCustomHost(url);
+        Observable<String> httpUserAgentTestObservable = htmlTester.performHTTPUserAgent(url);
         httpUserAgentTestObservable.subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new middleboxObserver("USER Agent Matched"));
+                .subscribe(new middleboxObserver("USER Agent Modified"));
+
+        Observable<String> natPresentTestObservable  = natTester.performNATExistTest(url);
+        natPresentTestObservable.subscribeOn(Schedulers.newThread())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new middleboxObserver("NAT Present"));
+
+        Observable<String> tcpResetTestObservable  = tcpTester.performTCPResetTest(mServer, mRandomPort);
+        tcpResetTestObservable.subscribeOn(Schedulers.newThread())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new middleboxObserver("TCP RESET on 8081"));
+
+        Observable<String> ipFlippingTestObervable = natTester.performIPFlippingTest(url);
+        ipFlippingTestObervable.subscribeOn(Schedulers.newThread())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new middleboxObserver("IP Flipping"));
+
     }
 
 
@@ -202,7 +252,34 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
         }
         @Override
         public void onCompleted() {
-            listViewAdapter.updateResult(testName,result);
+            listViewAdapter.updateResult(testName, result);
+            resultmap.put(testName,result);
+            doneSignal.decremetCount();
+            int n = doneSignal.getCount();
+            System.out.println(Integer.toString(n));
+            if(n==0){
+                for(String key:resultmap.keySet()){
+                    System.out.println(key + " : " + resultmap.get(key));
+                }
+                //reset the hashmap for next test
+
+                UploadResultsToServer uploader = new UploadResultsToServer();
+                HashMap<String,String> resultmapCopy = (HashMap<String,String>)resultmap.clone();
+                Observable uploadObservable = uploader.uploadResults(resultmapCopy,
+                                                        getApplicationContext(),
+                                                        mServer,
+                                                        mUploadPort,
+                                                        mLocation);
+//                uploadObservable.subscribeOn(Schedulers.newThread())
+//                        .observeOn(AndroidSchedulers.mainThread())
+//                        .subscribe();
+                uploadObservable.subscribeOn(Schedulers.newThread())
+                                .subscribe();
+                doneSignal.setCount(testCount);
+                resultmap.clear();
+                System.out.println("All tests done");
+            }
+
         }
 
         @Override
@@ -215,5 +292,6 @@ public class MainActivity extends AppCompatActivity implements OnClickListener{
             result = s;
         }
     }
+
 
 }

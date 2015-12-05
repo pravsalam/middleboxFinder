@@ -4,15 +4,10 @@ import android.content.Context;
 import android.util.Log;
 import android.view.View;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.SocketTimeoutException;
-import java.net.URL;
 
 import edu.stonybrook.utils.DeviceInfo;
+import edu.stonybrook.utils.HttpProcessor;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -24,47 +19,16 @@ public class HTMLTests {
     public HTMLTests(View view){
         mContext  = view.getContext();
     }
-    private HttpURLConnection httpConnBuilder(String url){
-        try{
-            URL urlObj = new URL(url);
-            HttpURLConnection httpCon = (HttpURLConnection)urlObj.openConnection();
-            httpCon.setRequestMethod("GET");
-            httpCon.setRequestProperty("Accept", "*/*");
-            httpCon.setConnectTimeout(1500);
-            return httpCon;
-        }catch(MalformedURLException e){
-            return null;
-        }catch(IOException e){
-            return null;
-        }
-    }
-    private String processConnection(HttpURLConnection httpCon) throws IOException{
-        try{
-            Integer responseCode = httpCon.getResponseCode();
-            Log.i("INFO",responseCode.toString());
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(httpCon.getErrorStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-            httpCon.disconnect();
-            return response.toString();
-        }catch(IOException e){
-            throw e;
-        }
-    }
     public Observable<String> performHTTP404(final String url){
         return Observable.create(new Observable.OnSubscribe<String>() {
             @Override
             public void call(Subscriber<? super String> subscriber) {
                 try{
-                    HttpURLConnection httpCon = httpConnBuilder(url);
-                    httpCon.setRequestProperty("Test-Type", "Http404");
+                    HttpProcessor httpProcessor = new HttpProcessor(url);
+                    httpProcessor.setHttpProperty("Test-Type", "Http404");
 
-                    String reply = processConnection(httpCon);
+                    String reply = httpProcessor.processConnection(true);
+                    Log.i("Praveen","Reply  = "+reply);
                     if(reply.equals("HTTP_404"))
                         subscriber.onNext("Pass");
                     else
@@ -82,24 +46,13 @@ public class HTMLTests {
 
             @Override
             public void call(Subscriber<? super String> subscriber) {
-                HttpURLConnection httpCon = httpConnBuilder(url);
-                httpCon.setRequestProperty("Host", "www.yahoo.com");
-                httpCon.setRequestProperty("Test-Type","HeaderHostTest");
                 try{
-                    Integer responseCode = httpCon.getResponseCode();
-                    Log.i("INFO",responseCode.toString());
-                    BufferedReader in = new BufferedReader(
-                            new InputStreamReader(httpCon.getInputStream()));
-                    String inputLine;
-                    StringBuffer response = new StringBuffer();
-                    while ((inputLine = in.readLine()) != null) {
-                        response.append(inputLine);
-                    }
-                    in.close();
-                    httpCon.disconnect();
-                    Log.i("INFO", response.toString());
-                    //return response.toString();
-                    if(response.toString().equals("MIDDLEBOX_SERVER"))
+                    HttpProcessor httpProcessor = new HttpProcessor(url);
+                    httpProcessor.setHttpProperty("Host", "www.yahoo.com");
+                    httpProcessor.setHttpProperty("Test-Type","HeaderHostTest");
+                    String reply = httpProcessor.processConnection(false);
+                    Log.i("Praveen","Reply  = "+reply);
+                    if(reply.equals("MIDDLEBOX_SERVER"))
                     {
                         subscriber.onNext("Pass");
                     }
@@ -119,31 +72,19 @@ public class HTMLTests {
         return Observable.create(new Observable.OnSubscribe<String>() {
             @Override
             public void call(Subscriber<? super String> subscriber) {
-                HttpURLConnection httpCon = httpConnBuilder(url);
                 String useragent =  mContext.getResources().getString(R.string.HTTP_TEST_USER_AGENT);
-                httpCon.setRequestProperty("User-Agent",useragent);
-                httpCon.setRequestProperty("Test-Type","HeaderTest");
-                try{
-                    int responseCode = httpCon.getResponseCode();
-                    Integer code = responseCode;
-                    Log.i("INFO",code.toString());
-                    BufferedReader in = new BufferedReader(
-                            new InputStreamReader(httpCon.getInputStream()));
-                    String inputLine;
-                    StringBuffer response = new StringBuffer();
 
-                    while ((inputLine = in.readLine()) != null) {
-                        response.append(inputLine);
-                    }
-                    in.close();
-                    httpCon.disconnect();
-                    Log.i("INFO",response.toString());
-                    //return response.toString();
-                    if(response.toString().equals("HTTP_HEADER_OK"))
+                try{
+                    HttpProcessor httpProcessor = new HttpProcessor(url);
+                    httpProcessor.setHttpProperty("User-Agent",useragent);
+                    httpProcessor.setHttpProperty("Test-Type","HeaderTest");
+                    String reply = httpProcessor.processConnection(false);
+                    Log.i("Praveen","Reply  = "+reply);
+                    if(reply.equals("HTTP_HEADER_OK"))
                     {
                         subscriber.onNext("Pass");
                     }
-                    else if( response.toString().equals("HTTP_HEADER_MANIPULATED")){
+                    else if( reply.equals("HTTP_HEADER_MANIPULATED")){
                         subscriber.onNext("Fail");
                     }
                     else{

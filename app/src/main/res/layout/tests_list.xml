@@ -57,7 +57,8 @@
         android:text="Test Information"
         android:id="@+id/testInfoTextView"
         android:visibility="invisible"
-        android:layout_below="@+id/testRow"
-        android:textColor="@color/blue14" />
+        android:textColor="@color/blue14"
+
+        android:layout_below="@id/testRow" />
 
 </RelativeLayout>
