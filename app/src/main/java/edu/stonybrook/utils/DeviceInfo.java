@@ -52,7 +52,7 @@ public class DeviceInfo {
                     deviceOperator = "WIFI";
                 } else {
                     TelephonyManager manager = (TelephonyManager) context.getSystemService(context.TELEPHONY_SERVICE);
-                    deviceOperator = manager.getNetworkOperator().replaceAll("\\s", "");
+                    deviceOperator = manager.getNetworkOperatorName().replaceAll("\\s", "");
                 }
             }
         }
